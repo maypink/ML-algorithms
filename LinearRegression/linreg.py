@@ -26,6 +26,11 @@ class LinearRegression:
             return True
         return False
 
+    @staticmethod
+    def _count_grad(features, labels, preds):
+        grad = 2 * (preds - labels).dot(features[:, 1])/(features.shape[0])
+        return grad
+
     def fit(self, features: np.ndarray, labels: np.ndarray):
         if not self.bias:
             features = np.column_stack((features, np.ones(features.shape[0]).astype(float)))
@@ -42,7 +47,7 @@ class LinearRegression:
                 break
 
             self.losses.append(cur_loss)
-            grad = -(labels - preds).dot(features) / (2.0 * features.shape[0])
+            grad = self._count_grad(features, labels, preds)
             self.weights = self.weights - self.lr * grad
 
             if self.check_stop_criteria(old_weights, preds, labels):
