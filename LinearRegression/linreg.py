@@ -4,7 +4,8 @@ import pickle
 
 
 class LinearRegression:
-    def __init__(self, lr: float = 0.001, max_iter: int = 100, eps: float = 0.01):
+    def __init__(self, bias: bool = False, lr: float = 0.001, max_iter: int = 100, eps: float = 0.01):
+        self.bias = bias
         self.lr = lr
         self.max_iter = max_iter
         self.weights = None
@@ -26,6 +27,9 @@ class LinearRegression:
         return False
 
     def fit(self, features: np.ndarray, labels: np.ndarray):
+        if not self.bias:
+            features = np.column_stack((features, np.ones(features.shape[0]).astype(float)))
+
         self.weights = np.random.rand(features.shape[1])
 
         for i in range(self.max_iter):
@@ -71,4 +75,6 @@ class LinearRegression:
         return loss
 
     def predict(self, features: np.ndarray) -> np.ndarray:
+        if features.shape[1] != self.weights.shape[0]:
+            features = np.column_stack((features, np.ones(features.shape[0]).astype(float)))
         return np.dot(features, self.weights)
