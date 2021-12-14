@@ -35,19 +35,26 @@ class DecisionTree:
         self.add_node(sample2, ' [>= ', split_feature, best_t, None, ['root'])
 
         for node in self.tree:
-            if self.check_restrictions() == False:
+            try:
+                assert(self.check_restrictions())
+            except AssertionError:
                 break
             if (node['edges'] == None) & (entropy(node['df']['species']) != 0):
                 sample1, sample2, split_feature, best_t = self.find_best_split(node['df'])
                 if self.check_min_leaf_size == False:
                     node['edges'] = False
                     break
-                self.add_node(sample1, ' [< ', split_feature, best_t, None, node['parents'] + [node['name']])
-                self.add_node(sample2, ' [>= ', split_feature, best_t, None, node['parents'] + [node['name']])
+                self.add_split(node, sample1=sample1, sample2=sample2, split_feature=split_feature, best_t=best_t)
                 node['edges'] = [split_feature + ' [< ' + str(best_t), split_feature + ' [>= ' + str(best_t)]
         return self.tree
 
-    def add_node(self, sample: pd.DataFrame, sign: str, split_feature: str, best_t: float, edges: List[str] = None,
+    def add_split(self, node, sample1, sample2, split_feature, best_t):
+        self._add_node(sample=sample1, sign=' [< ', split_feature=split_feature,
+                       best_t=best_t, edges=None, parents=node['parents'] + [node['name']])
+        self._add_node(sample=sample2, sign=' [>= ', split_feature=split_feature,
+                       best_t=best_t, edges=None, parents=node['parents'] + [node['name']])
+
+    def _add_node(self, sample: pd.DataFrame, sign: str, split_feature: str, best_t: float, edges: List[str] = None,
                  parents: List[str] = None):
         node = {'name': split_feature + sign + str(best_t), 'df': sample, 'edges': edges, 'parents': parents}
         self.tree.append(node)
@@ -80,35 +87,36 @@ class DecisionTree:
         return best_t, best_IG
 
     def get_params(self, node: Dict):
+        """Return params of current tree split"""
         feature = node['name'].split('[')[0]
         sign = node['name'].split('[')[1].split(' ')[0]
         t = node['name'].split('[')[1].split(' ')[1]
         return feature[:-1], sign, float(t)
 
     def check_on_edges(self, sample: pd.DataFrame, edges: List[str]):
-        for edge in edges:
+        """Looking for an answer walking down the edges of a tree"""
+        for edge in edges:  # names of edges of current node
             for node in self.tree:
-                if node['name'] == edge:
-                    feature, sign, t = self.get_params(node)
-                    if sign == '<':
-                        if (sample[feature] < t) & (node['edges'] != None):
+                if node['name'] != edge:  # search for edge object (not just name like two lines up)
+                    continue
+                feature, sign, t = self.get_params(node)
+                if sign == '<':
+                    if (sample[feature] < t) and (node['edges'] is not None):
+                        return self.check_on_edges(sample, node['edges'])
+                    elif node['edges'] is None:
+                        return node['df'].groupby('species').count().reset_index().sort_values(by=feature,
+                                                                                               ascending=False).iloc[0][0]
+                    else:
+                        continue
+                else:
+                    if sign == '>=':
+                        if (sample[feature] >= t) and (node['edges'] is not None):
                             return self.check_on_edges(sample, node['edges'])
-                        elif node['edges'] == None:
+                        elif node['edges'] is None:
                             return node['df'].groupby('species').count().reset_index().sort_values(by=feature,
-                                                                                                   ascending=False).iloc[
-                                0][0]
+                                                                                                   ascending=False).iloc[0][0]
                         else:
                             continue
-                    else:
-                        if sign == '>=':
-                            if (sample[feature] >= t) & (node['edges'] != None):
-                                return self.check_on_edges(sample, node['edges'])
-                            elif node['edges'] == None:
-                                return node['df'].groupby('species').count().reset_index().sort_values(by=feature,
-                                                                                                       ascending=False).iloc[
-                                    0][0]
-                            else:
-                                continue
 
     def predict(self, samples: pd.DataFrame):
         res = []
@@ -117,26 +125,23 @@ class DecisionTree:
             for node in self.tree:
                 feature, sign, t = self.get_params(node)
                 if sign == '<':
-                    if (sample[feature] < t) & (node['edges'] != None):
+                    if (sample[feature] < t) and (node['edges'] != None):
                         res.append(self.check_on_edges(sample, node['edges']))
                         break
-                    elif (sample[feature] < t) & (node['edges'] == None):
+                    elif (sample[feature] < t) and (node['edges'] == None):
                         res.append(node['df'].groupby('species').count().reset_index().sort_values(by=feature,
-                                                                                                   ascending=False).iloc[
-                                       0][0])
+                                                                                                   ascending=False).iloc[0][0])
                         break
                     else:
                         continue
                 else:
-                    if sign == '>=':
-                        if (sample[feature] >= t) & (node['edges'] != None):
-                            res.append(self.check_on_edges(sample, node['edges']))
-                            break
-                        elif (sample[feature] >= t) & (node['edges'] == None):
-                            res.append(node['df'].groupby('species').count().reset_index().sort_values(by=feature,
-                                                                                                       ascending=False).iloc[
-                                           0][0])
-                            break
-                        else:
-                            continue
+                    if (sample[feature] >= t) and (node['edges'] != None):
+                        res.append(self.check_on_edges(sample, node['edges']))
+                        break
+                    elif (sample[feature] >= t) and (node['edges'] == None):
+                        res.append(node['df'].groupby('species').count().reset_index().sort_values(by=feature,
+                                                                                                   ascending=False).iloc[0][0])
+                        break
+                    else:
+                        continue
         return res
