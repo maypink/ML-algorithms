@@ -18,7 +18,7 @@ class LinearRegression:
     def get_losses(self) -> np.ndarray:
         return self.losses
 
-    def check_stop_criteria(self, old_weights: np.ndarray,
+    def is_should_stop(self, old_weights: np.ndarray,
                             preds: np.ndarray, labels: np.ndarray):
         if (abs(preds - labels)).sum() < self.eps:
             return True
@@ -27,7 +27,7 @@ class LinearRegression:
         return False
 
     @staticmethod
-    def _count_grad(features, labels, preds):
+    def _count_grad(features: np.ndarray, labels: np.ndarray, preds: np.ndarray):
         grad = 2 * (preds - labels).dot(features[:, 1])/(features.shape[0])
         return grad
 
@@ -50,21 +50,22 @@ class LinearRegression:
             grad = self._count_grad(features, labels, preds)
             self.weights = self.weights - self.lr * grad
 
-            if self.check_stop_criteria(old_weights, preds, labels):
+            if self.is_should_stop(old_weights, preds, labels):
                 break
 
         return self
 
-    def load_weights(self, path: Path) -> None:
+    @classmethod
+    def from_pickle(cls, path: Path) -> None:
         with open(path, 'rb') as f:
             params = pickle.load(f)
-        self.max_iter = params['max_iter']
-        self.lr = params['lr']
-        self.eps = params['eps']
-        self.weights = np.array(params['weights'])
-        self.losses = params['losses']
+        model = cls(lr=params['lr'], max_iter=params['max_iter'],
+                    eps=params['eps'])
+        model.weights = np.array(params['weights'])
+        model.losses = params['losses']
+        return model
 
-    def save_weights(self, path: Path) -> None:
+    def to_pickle(self, path: Path) -> None:
         params = {'max_iter': self.max_iter,
                   'lr': self.lr,
                   'eps': self.eps,
