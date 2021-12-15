@@ -14,8 +14,7 @@ class DecisionTree:
         self.max_leaves_amount = max_leaves_amount
 
     def check_min_leaf_size(sample1: pd.DataFrame, sample2: pd.DataFrame):
-        if sample1.shape[0] > self.min_leaf_size | sample2.shape[0] > self.min_leaf_size:
-            return False
+        assert(sample1.shape[0] > self.min_leaf_size | sample2.shape[0] > self.min_leaf_size)
 
     def check_restrictions(self):
         leaves = 0
@@ -36,16 +35,18 @@ class DecisionTree:
 
         for node in self.tree:
             try:
-                assert(self.check_restrictions())
+                self.check_restrictions()
             except AssertionError:
                 break
-            if (node['edges'] == None) & (entropy(node['df']['species']) != 0):
-                sample1, sample2, split_feature, best_t = self.find_best_split(node['df'])
-                if self.check_min_leaf_size == False:
-                    node['edges'] = False
-                    break
-                self.add_split(node, sample1=sample1, sample2=sample2, split_feature=split_feature, best_t=best_t)
-                node['edges'] = [split_feature + ' [< ' + str(best_t), split_feature + ' [>= ' + str(best_t)]
+
+            if (node['edges'] == None) & (entropy(node['df']['species']) == 0):
+                continue
+            sample1, sample2, split_feature, best_t = self.find_best_split(node['df'])
+            if self.check_min_leaf_size == False:
+                node['edges'] = False
+                break
+            self.add_split(node, sample1=sample1, sample2=sample2, split_feature=split_feature, best_t=best_t)
+            node['edges'] = [split_feature + ' [< ' + str(best_t), split_feature + ' [>= ' + str(best_t)]
         return self.tree
 
     def add_split(self, node, sample1, sample2, split_feature, best_t):
@@ -59,7 +60,7 @@ class DecisionTree:
         node = {'name': split_feature + sign + str(best_t), 'df': sample, 'edges': edges, 'parents': parents}
         self.tree.append(node)
 
-    def find_best_split(self, df: pd.DataFrame):
+    def find_best_split(self, df: pd.DataFrame) -> [pd.DataFrame, pd.DataFrame, str, int]:
         best_IG = float('-inf')
         best_t = 0
         split_feature = ''
@@ -72,7 +73,7 @@ class DecisionTree:
         sample2 = df[df[split_feature] >= best_t]
         return sample1, sample2, split_feature, best_t
 
-    def find_best_split_on_feature(self, feature, df):
+    def find_best_split_on_feature(self, feature: str, df: pd.DataFrame) -> [int, float]:
         if df[feature].empty:
             return 0, float('-inf')
         grid = np.linspace(min(df[feature].to_list()), max(df[feature].to_list()), 10)
@@ -109,14 +110,13 @@ class DecisionTree:
                     else:
                         continue
                 else:
-                    if sign == '>=':
-                        if (sample[feature] >= t) and (node['edges'] is not None):
-                            return self.check_on_edges(sample, node['edges'])
-                        elif node['edges'] is None:
-                            return node['df'].groupby('species').count().reset_index().sort_values(by=feature,
-                                                                                                   ascending=False).iloc[0][0]
-                        else:
-                            continue
+                    if (sample[feature] >= t) and (node['edges'] is not None):
+                        return self.check_on_edges(sample, node['edges'])
+                    elif node['edges'] is None:
+                        return node['df'].groupby('species').count().reset_index().sort_values(by=feature,
+                                                                                               ascending=False).iloc[0][0]
+                    else:
+                        continue
 
     def predict(self, samples: pd.DataFrame):
         res = []

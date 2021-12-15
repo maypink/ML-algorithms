@@ -12,11 +12,21 @@ class LinearRegression:
         self.losses = []
         self.eps = eps
 
-    def get_weights(self) -> np.ndarray:
-        return self.weights
+    @property
+    def weights(self):
+        return self._weights
 
-    def get_losses(self) -> np.ndarray:
-        return self.losses
+    @weights.setter
+    def weights(self, weights):
+        self._weights = weights
+
+    @property
+    def losses(self):
+        return self._losses
+
+    @losses.setter
+    def losses(self, losses):
+        self._losses = losses
 
     def is_should_stop(self, old_weights: np.ndarray,
                             preds: np.ndarray, labels: np.ndarray):
@@ -56,7 +66,7 @@ class LinearRegression:
         return self
 
     @classmethod
-    def from_pickle(cls, path: Path) -> None:
+    def from_pickle(cls, path: Path) -> 'LinearRegression':
         with open(path, 'rb') as f:
             params = pickle.load(f)
         model = cls(lr=params['lr'], max_iter=params['max_iter'],
