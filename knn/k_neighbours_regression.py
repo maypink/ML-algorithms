@@ -1,10 +1,10 @@
 from tqdm import tqdm
 import numpy as np
 from typing import List
-from k_neighbors_classifier import KNeighborsClassifier
+from knn import KNN
 
 
-class KNeighborsRegression(KNeighborsClassifier):
+class KNeighborsRegression(KNN):
 
     @staticmethod
     def weighted_average(sorted_dist: List[float], y: np.ndarray) -> float:
