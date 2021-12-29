@@ -12,7 +12,7 @@ class KNeighborsClassifier:
         euclidian_dist = 0
         for i in range(len(sample) - 1):
             euclidian_dist += (sample[i] - cur_sample[i]) ** 2
-        euclidian_dict = euclidian_dist ** 0.5
+        euclidian_dist = euclidian_dist ** 0.5
         return euclidian_dist
 
     def get_sorted_distances(self, sample: np.ndarray, x: np.ndarray):
