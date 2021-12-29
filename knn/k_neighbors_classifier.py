@@ -7,7 +7,8 @@ class KNeighborsClassifier:
     def __init__(self, k: int = 3):
         self.k = k
 
-    def calc_dist(self, sample: np.ndarray, cur_sample: np.ndarray) -> float:
+    @staticmethod
+    def calc_dist(sample: np.ndarray, cur_sample: np.ndarray) -> float:
         euclidian_dist = 0
         for i in range(len(sample) - 1):
             euclidian_dist += (sample[i] - cur_sample[i]) ** 2
